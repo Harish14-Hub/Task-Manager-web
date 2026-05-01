@@ -45,6 +45,19 @@ async function ensureSchema() {
       );
     `);
 
+    // STEP 2b: Rename password_hash to password if old column exists
+    await db.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'password_hash'
+        ) THEN
+          ALTER TABLE users RENAME COLUMN password_hash TO password;
+        END IF;
+      END $$;
+    `);
+
     // STEP 3: Create projects table
     await db.query(`
       CREATE TABLE IF NOT EXISTS projects (

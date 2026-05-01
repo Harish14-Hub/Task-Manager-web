@@ -173,22 +173,28 @@ const updateTaskStatus = async (req, res) => {
   }
 };
 
-// Get tasks assigned to logged-in user across all projects
 const getMyTasks = async (req, res) => {
   try {
     const userId = req.user.id;
-    const query = `
+    const userRole = req.user.role;
+    let query = `
       SELECT t.id, t.title, t.description, t.status, t.due_date, t.created_at,
-             p.id as project_id, p.name as project_name
+             p.id as project_id, p.name as project_name,
+             u.id as assignee_id, u.name as assignee_name, u.email as assignee_email
       FROM tasks t
       JOIN projects p ON t.project_id = p.id
-      WHERE t.assigned_to = $1
-      ORDER BY t.created_at DESC
+      LEFT JOIN users u ON t.assigned_to = u.id
     `;
-    const result = await db.query(query, [userId]);
+    const params = [];
+    if (userRole === 'member') {
+      query += ` WHERE t.assigned_to = $1`;
+      params.push(userId);
+    }
+    query += ` ORDER BY t.created_at DESC`;
+    const result = await db.query(query, params);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching my tasks:', error);
+    console.error('Error fetching tasks:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

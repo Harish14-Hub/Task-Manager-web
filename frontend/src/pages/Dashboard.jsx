@@ -217,7 +217,6 @@ function Dashboard() {
           setDashboardStats(response.data.stats || EMPTY_STATS);
           setMembers(response.data.members || []);
           setProjects(response.data.projects || []);
-          setAdminTasks(response.data.tasks || []);
         });
       } else {
         const response = await api.get('/dashboard/stats');
@@ -258,10 +257,6 @@ function Dashboard() {
   }, []);
 
   const fetchTasks = useCallback(async (silent = false) => {
-    if (user.role !== 'member') {
-      return;
-    }
-
     if (silent) {
       setRefreshing(true);
     }
@@ -269,7 +264,11 @@ function Dashboard() {
     try {
       const response = await api.get('/tasks/my');
       startTransition(() => {
-        setMemberTasks(response.data || []);
+        if (user.role === 'admin') {
+          setAdminTasks(response.data || []);
+        } else {
+          setMemberTasks(response.data || []);
+        }
       });
     } catch (error) {
       setFeedback({
@@ -282,6 +281,25 @@ function Dashboard() {
       }
     }
   }, [user.role]);
+
+  const fetchProjects = useCallback(async () => {
+    if (user.role !== 'member') {
+      return;
+    }
+
+    try {
+      const response = await api.get('/projects');
+      startTransition(() => {
+        setMemberProjects(response.data || []);
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        text: error.response?.data?.message || 'Unable to load assigned projects.',
+      });
+    }
+  }, [user.role]);
+
 
   const fetchProjectMembers = useCallback(async (projectId) => {
     if (!projectId) {
@@ -308,9 +326,9 @@ function Dashboard() {
 
     async function bootstrap() {
       if (user.role === 'admin') {
-        await Promise.all([fetchDashboard(false), fetchMembers()]);
+        await Promise.all([fetchDashboard(false), fetchTasks(false), fetchMembers()]);
       } else {
-        await Promise.all([fetchDashboard(false), fetchTasks(false)]);
+        await Promise.all([fetchDashboard(false), fetchTasks(false), fetchProjects()]);
       }
 
       if (!cancelled) {
@@ -322,9 +340,9 @@ function Dashboard() {
 
     const intervalId = window.setInterval(() => {
       if (user.role === 'admin') {
-        fetchDashboard(true);
-      } else {
         Promise.all([fetchDashboard(true), fetchTasks(true)]);
+      } else {
+        Promise.all([fetchDashboard(true), fetchTasks(true), fetchProjects()]);
       }
     }, REFRESH_INTERVAL_MS);
 

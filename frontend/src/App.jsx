@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ChangePassword from './pages/ChangePassword';
+import ProjectBoard from './pages/ProjectBoard';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -35,7 +36,20 @@ const FirstLoginRoute = ({ children }) => {
 
 function AppRoutes() {
   const { user } = useAuth();
-  const defaultRoute = user ? (user.firstLogin ? '/change-password' : '/') : '/login';
+  const role = localStorage.getItem('role') || user?.role;
+  
+  let defaultRoute = '/login';
+  if (user) {
+    if (user.firstLogin) {
+      defaultRoute = '/change-password';
+    } else if (role === 'admin') {
+      defaultRoute = '/admin/dashboard';
+    } else if (role === 'member') {
+      defaultRoute = '/member/dashboard';
+    } else {
+      defaultRoute = '/';
+    }
+  }
 
   return (
     <Routes>
@@ -57,6 +71,22 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/admin/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/member/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/projects" 
         element={
           <ProtectedRoute>
@@ -68,7 +98,7 @@ function AppRoutes() {
         path="/projects/:id" 
         element={
           <ProtectedRoute>
-            <Navigate to="/" replace />
+            <ProjectBoard />
           </ProtectedRoute>
         } 
       />

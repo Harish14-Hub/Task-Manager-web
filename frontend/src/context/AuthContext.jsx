@@ -6,6 +6,7 @@ const AuthContext = createContext();
 
 function readStoredUser() {
   const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
 
   if (!token) {
     return null;
@@ -15,12 +16,14 @@ function readStoredUser() {
     const decoded = jwtDecode(token);
     if (decoded.exp * 1000 < Date.now()) {
       localStorage.removeItem('token');
+      localStorage.removeItem('role');
       return null;
     }
 
-    return decoded;
+    return { ...decoded, role: decoded.role || role };
   } catch {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     return null;
   }
 }
@@ -32,11 +35,15 @@ export const AuthProvider = ({ children }) => {
   const login = (token) => {
     localStorage.setItem('token', token);
     const decoded = jwtDecode(token);
+    if (decoded.role) {
+      localStorage.setItem('role', decoded.role);
+    }
     setUser(decoded);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     setUser(null);
   };
 

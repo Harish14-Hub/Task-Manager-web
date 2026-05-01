@@ -38,7 +38,7 @@ const getProjects = async (req, res) => {
 
 // Create a project (Admin only conceptually, but checking role)
 const createProject = async (req, res) => {
-  const client = await db.pool.connect();
+  const client = await db.connect();
 
   try {
     const { name, description, member_ids = [] } = req.body;

@@ -166,7 +166,7 @@ const getAdminOverview = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-  const client = await db.pool.connect();
+  const client = await db.connect();
 
   try {
     const { id } = req.params;
@@ -212,7 +212,7 @@ const deleteUser = async (req, res) => {
 };
 
 const resetWorkspace = async (req, res) => {
-  const client = await db.pool.connect();
+  const client = await db.connect();
 
   try {
     await client.query('BEGIN');

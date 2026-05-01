@@ -28,24 +28,58 @@ async function createDefaultAdmin() {
 
 async function ensureSchema() {
   try {
-    // 🔥 STEP 1: CREATE TABLE FIRST
+    // STEP 1: Enable UUID extension
+    await db.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+
+    // STEP 2: Create users table
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        email VARCHAR(100) UNIQUE,
-        password TEXT,
-        role VARCHAR(20),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) CHECK (role IN ('admin', 'member')) DEFAULT 'member',
         job_role VARCHAR(100),
         is_first_login BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // 🔥 STEP 2: EXTENSION
-    await db.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+    // STEP 3: Create projects table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-    // 🔥 STEP 3: SAFE ALTER
+    // STEP 4: Create project_members table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS project_members (
+        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        PRIMARY KEY (project_id, user_id)
+      );
+    `);
+
+    // STEP 5: Create tasks table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        status VARCHAR(50) CHECK (status IN ('todo', 'in_progress', 'completed')) DEFAULT 'todo',
+        assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+        due_date TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // STEP 6: Safe column additions (for existing databases)
     await db.query(`
       ALTER TABLE users
       ADD COLUMN IF NOT EXISTS job_role VARCHAR(100)
@@ -56,7 +90,7 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS is_first_login BOOLEAN DEFAULT true
     `);
 
-    // 🔥 STEP 4: DATA UPDATE
+    // STEP 7: Data defaults
     await db.query(`
       UPDATE users
       SET job_role = 'Team Member'

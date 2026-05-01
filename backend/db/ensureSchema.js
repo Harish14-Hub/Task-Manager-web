@@ -1,4 +1,30 @@
 const db = require('../config/db');
+const bcrypt = require('bcrypt');
+
+async function createDefaultAdmin() {
+  try {
+    const user = await db.query(
+      "SELECT * FROM users WHERE email = $1",
+      ["admin@test.com"]
+    );
+
+    if (user.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash("123456", 10);
+
+      await db.query(
+        `INSERT INTO users (name, email, password, role, is_first_login)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ["Admin", "admin@test.com", hashedPassword, "admin", false]
+      );
+
+      console.log("Default admin created ✅");
+    } else {
+      console.log("Admin user already exists ✅");
+    }
+  } catch (err) {
+    console.error("Error creating default admin:", err);
+  }
+}
 
 async function ensureSchema() {
   try {
@@ -50,6 +76,9 @@ async function ensureSchema() {
     `);
 
     console.log("Schema ready ✅");
+
+    // Seed default admin if database is empty
+    await createDefaultAdmin();
   } catch (err) {
     console.error("Schema error:", err);
   }

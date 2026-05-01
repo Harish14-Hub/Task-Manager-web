@@ -37,7 +37,7 @@ const login = async (req, res) => {
     }
 
     // Verify password
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
@@ -77,7 +77,7 @@ const changePassword = async (req, res) => {
     const result = await db.query(
       `
         UPDATE users
-        SET password_hash = $1, is_first_login = false
+        SET password = $1, is_first_login = false
         WHERE id = $2
         RETURNING id, name, email, role, job_role, is_first_login
       `,

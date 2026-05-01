@@ -14,11 +14,11 @@ async function seedAdmin() {
     }
 
     const saltRounds = 10;
-    const password_hash = await bcrypt.hash(adminPassword, saltRounds);
+    const password = await bcrypt.hash(adminPassword, saltRounds);
 
     await db.query(
-      'INSERT INTO users (name, email, password_hash, role, is_first_login) VALUES ($1, $2, $3, $4, $5)',
-      ['System Admin', adminEmail, password_hash, 'admin', false]
+      'INSERT INTO users (name, email, password, role, is_first_login) VALUES ($1, $2, $3, $4, $5)',
+      ['System Admin', adminEmail, password, 'admin', false]
     );
 
     console.log('Admin user successfully seeded!');

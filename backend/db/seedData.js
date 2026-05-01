@@ -20,7 +20,7 @@ async function seedData() {
       let userRes = await db.query("SELECT id, name FROM users WHERE email = $1", [email]);
       if (userRes.rows.length === 0) {
         userRes = await db.query(
-          "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name",
+          "INSERT INTO users (name, email, password, role, job_role, is_first_login) VALUES ($1, $2, $3, $4, 'Developer', false) RETURNING id, name",
           [`Team Member ${i}`, email, pass, 'member']
         );
       }

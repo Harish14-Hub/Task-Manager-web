@@ -34,9 +34,13 @@ const PORT = process.env.PORT || 5000;
 
 ensureSchema()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    try {
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    } catch (err) {
+      console.error("Startup error:", err);
+    }
   })
   .catch((error) => {
     console.error('Failed to prepare database schema:', error);

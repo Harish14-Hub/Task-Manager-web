@@ -28,20 +28,20 @@ const createUser = async (req, res) => {
 
     // Hash password
     const saltRounds = 10;
-    const password_hash = await bcrypt.hash(defaultPassword, saltRounds);
+    const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
 
     // Hardcode role to member as per requirements
     const role = 'member';
 
     const insertQuery = `
-      INSERT INTO users (name, email, password_hash, role, job_role, is_first_login)
+      INSERT INTO users (name, email, password, role, job_role, is_first_login)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, name, email, role, job_role, is_first_login, created_at
     `;
     const result = await db.query(insertQuery, [
       name.trim(),
       normalizedEmail,
-      password_hash,
+      hashedPassword,
       role,
       normalizedJobRole,
       true,

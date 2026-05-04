@@ -27,7 +27,7 @@ const ProjectBoard = () => {
         const [tasksRes, membersRes, allMembersRes] = await Promise.all([
           api.get(`/projects/${id}/tasks`),
           api.get(`/projects/${id}/members`),
-          user.role === 'admin' ? api.get('/admin/users') : Promise.resolve({ data: [] })
+          user.role === 'admin' ? api.get('/members') : Promise.resolve({ data: [] })
         ]);
         setTasks(tasksRes.data);
         setMembers(membersRes.data);

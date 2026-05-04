@@ -24,6 +24,7 @@ const EMPTY_STATS = {
 const EMPTY_MEMBER_FORM = {
   name: '',
   email: '',
+  password: 'password123',
   jobRole: JOB_ROLE_OPTIONS[0],
 };
 
@@ -143,39 +144,6 @@ function EmptyState({ title, description }) {
   );
 }
 
-async function buildAdminWorkspaceFallback() {
-  const [statsResponse, membersResponse, projectsResponse] = await Promise.all([
-    api.get('/dashboard/stats'),
-    api.get('/members').catch(() => api.get('/admin/users')),
-    api.get('/projects'),
-  ]);
-
-  const baseProjects = projectsResponse.data || [];
-
-  const projectDetails = await Promise.all(
-    baseProjects.map(async (project) => {
-      const [membersResult, tasksResult] = await Promise.all([
-        api.get(`/projects/${project.id}/members`).catch(() => ({ data: [] })),
-        api.get(`/projects/${project.id}/tasks`).catch(() => ({ data: [] })),
-      ]);
-
-      return {
-        ...project,
-        members: membersResult.data || [],
-        member_count: (membersResult.data || []).length,
-        tasks: tasksResult.data || [],
-      };
-    })
-  );
-
-  return {
-    stats: statsResponse.data || EMPTY_STATS,
-    members: membersResponse.data || [],
-    projects: projectDetails,
-    tasks: projectDetails.flatMap((project) => project.tasks || []),
-  };
-}
-
 function Dashboard() {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -190,6 +158,7 @@ function Dashboard() {
   const [adminTasks, setAdminTasks] = useState([]);
   const [memberStats, setMemberStats] = useState(EMPTY_STATS);
   const [memberTasks, setMemberTasks] = useState([]);
+  const [, setMemberProjects] = useState([]);
 
   const [memberForm, setMemberForm] = useState(EMPTY_MEMBER_FORM);
   const [projectForm, setProjectForm] = useState(EMPTY_PROJECT_FORM);
@@ -204,14 +173,7 @@ function Dashboard() {
 
     try {
       if (user.role === 'admin') {
-        const response = await api.get('/admin/overview').catch(async (error) => {
-          if (error.response?.status === 404) {
-            const fallbackData = await buildAdminWorkspaceFallback();
-            return { data: fallbackData };
-          }
-
-          throw error;
-        });
+        const response = await api.get('/dashboard/overview');
 
         startTransition(() => {
           setDashboardStats(response.data.stats || EMPTY_STATS);
@@ -238,13 +200,7 @@ function Dashboard() {
 
   const fetchMembers = useCallback(async () => {
     try {
-      const response = await api.get('/members').catch((error) => {
-        if (error.response?.status === 404) {
-          return api.get('/admin/users');
-        }
-
-        throw error;
-      });
+      const response = await api.get('/members');
       startTransition(() => {
         setMembers(response.data || []);
       });
@@ -376,9 +332,11 @@ function Dashboard() {
     setFeedback(null);
 
     try {
-      const response = await api.post('/admin/create-user', {
-        ...memberForm,
-        password: 'password123',
+      const response = await api.post('/members', {
+        name: memberForm.name,
+        email: memberForm.email,
+        password: memberForm.password,
+        jobRole: memberForm.jobRole,
       });
       const createdMember = {
         ...response.data.user,
@@ -519,7 +477,7 @@ function Dashboard() {
     setFeedback(null);
 
     try {
-      await api.delete(`/admin/users/${member.id}`);
+      await api.delete(`/members/${member.id}`);
       setMembers((prev) => prev.filter((currentMember) => currentMember.id !== member.id));
       setProjects((prev) =>
         prev.map((project) => ({

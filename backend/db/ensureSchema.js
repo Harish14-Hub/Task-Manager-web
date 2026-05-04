@@ -80,8 +80,8 @@ async function ensureSchema() {
     try {
       await db.query(`
         CREATE TABLE IF NOT EXISTS project_members (
-          project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          project_id UUID,
+          user_id UUID,
           PRIMARY KEY (project_id, user_id)
         );
       `);
@@ -93,17 +93,17 @@ async function ensureSchema() {
     // TASKS
     try {
       await db.query(`
-        CREATE TABLE IF NOT EXISTS tasks (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-          title TEXT,
-          description TEXT,
-          status TEXT DEFAULT 'todo',
-          assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
-          due_date TIMESTAMP,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+  CREATE TABLE IF NOT EXISTS tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID,
+    title TEXT,
+    description TEXT,
+    status TEXT DEFAULT 'todo',
+    assigned_to UUID,
+    due_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`); 
       console.log("✅ tasks ready");
     } catch (err) {
       console.log("❌ tasks error:", err.message);

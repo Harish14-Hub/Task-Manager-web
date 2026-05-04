@@ -15,14 +15,14 @@ const getTasks = async (req, res) => {
       FROM tasks t
       JOIN projects p ON p.id = t.project_id
       LEFT JOIN users u ON t.assigned_to = u.id
-      WHERE t.project_id = $1
+      WHERE t.project_id = $1::uuid
     `;
     const params = [projectId, parseInt(limit)];
     let paramIndex = 3;
 
     // Members only see tasks assigned to them
     if (userRole === 'member') {
-      query += ` AND t.assigned_to = $${paramIndex}`;
+      query += ` AND t.assigned_to = $${paramIndex}::uuid`;
       params.push(userId);
       paramIndex++;
     }
@@ -56,7 +56,7 @@ const createTask = async (req, res) => {
       return res.status(400).json({ message: 'Task must be assigned to a member' });
     }
 
-    const projectCheck = await db.query('SELECT id FROM projects WHERE id = $1', [projectId]);
+    const projectCheck = await db.query('SELECT id FROM projects WHERE id = $1::uuid', [projectId]);
     if (projectCheck.rows.length === 0) {
       return res.status(404).json({ message: 'Project not found' });
     }
@@ -67,7 +67,7 @@ const createTask = async (req, res) => {
         SELECT 1
         FROM project_members pm
         JOIN users u ON u.id = pm.user_id
-        WHERE pm.project_id = $1 AND pm.user_id = $2 AND u.role = 'member'
+        WHERE pm.project_id = $1::uuid AND pm.user_id = $2::uuid AND u.role = 'member'
       `,
       [projectId, assigned_to]
     );
@@ -78,7 +78,7 @@ const createTask = async (req, res) => {
 
     const result = await db.query(
       `INSERT INTO tasks (project_id, title, description, assigned_to, due_date)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+       VALUES ($1::uuid, $2, $3, $4::uuid, $5) RETURNING *`,
       [projectId, title.trim(), description?.trim() || null, assigned_to, due_date || null]
     );
 
@@ -99,7 +99,7 @@ const createTask = async (req, res) => {
         FROM tasks t
         JOIN projects p ON p.id = t.project_id
         LEFT JOIN users u ON u.id = t.assigned_to
-        WHERE t.id = $1
+        WHERE t.id = $1::uuid
       `,
       [result.rows[0].id]
     );
@@ -122,7 +122,7 @@ const updateTaskStatus = async (req, res) => {
     }
 
     const taskResult = await db.query(
-      'SELECT id, assigned_to FROM tasks WHERE id = $1',
+      'SELECT id, assigned_to FROM tasks WHERE id = $1::uuid',
       [id]
     );
 
@@ -130,7 +130,7 @@ const updateTaskStatus = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    if (req.user.role === 'member' && taskResult.rows[0].assigned_to !== req.user.id) {
+    if (req.user.role === 'member' && String(taskResult.rows[0].assigned_to) !== String(req.user.id)) {
       return res.status(403).json({ message: 'You can only update tasks assigned to you.' });
     }
 
@@ -138,7 +138,7 @@ const updateTaskStatus = async (req, res) => {
       `
         UPDATE tasks
         SET status = $1
-        WHERE id = $2
+        WHERE id = $2::uuid
         RETURNING id, project_id, title, description, status, due_date, created_at, assigned_to
       `,
       [status, id]
@@ -161,7 +161,7 @@ const updateTaskStatus = async (req, res) => {
         FROM tasks t
         JOIN projects p ON p.id = t.project_id
         LEFT JOIN users u ON u.id = t.assigned_to
-        WHERE t.id = $1
+        WHERE t.id = $1::uuid
       `,
       [result.rows[0].id]
     );
@@ -175,8 +175,11 @@ const updateTaskStatus = async (req, res) => {
 
 const getMyTasks = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = String(req.user.id);
     const userRole = req.user.role;
+    
+    console.log("User ID:", userId, typeof userId);
+
     let query = `
       SELECT t.id, t.title, t.description, t.status, t.due_date, t.created_at,
              p.id as project_id, p.name as project_name,
@@ -187,7 +190,7 @@ const getMyTasks = async (req, res) => {
     `;
     const params = [];
     if (userRole === 'member') {
-      query += ` WHERE t.assigned_to = $1`;
+      query += ` WHERE t.assigned_to = $1::uuid`;
       params.push(userId);
     }
     query += ` ORDER BY t.created_at DESC`;

@@ -11,13 +11,13 @@ const getProjects = async (req, res) => {
     let query = `
       SELECT DISTINCT p.id, p.name, p.description, p.created_by, p.created_at
       FROM projects p
-      LEFT JOIN project_members pm ON p.id = pm.project_id
+      LEFT JOIN project_members pm ON p.id::text = pm.project_id::text
     `;
     const params = [];
 
     if (userRole !== 'admin') {
       params.push(userId);
-      query += ` WHERE (pm.user_id = $${params.length} OR p.created_by = $${params.length})`;
+      query += ` WHERE (pm.user_id = $${params.length}::uuid OR p.created_by = $${params.length}::uuid)`;
     }
 
     if (cursor) {
@@ -67,20 +67,20 @@ const createProject = async (req, res) => {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO projects (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
+      'INSERT INTO projects (name, description, created_by) VALUES ($1, $2, $3::uuid) RETURNING *',
       [name.trim(), description?.trim() || null, userId]
     );
 
     const project = result.rows[0];
 
     await client.query(
-      'INSERT INTO project_members (project_id, user_id) VALUES ($1, $2)',
+      'INSERT INTO project_members (project_id, user_id) VALUES ($1::uuid, $2::uuid)',
       [project.id, userId]
     );
 
     for (const memberId of memberIds) {
       await client.query(
-        'INSERT INTO project_members (project_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        'INSERT INTO project_members (project_id, user_id) VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING',
         [project.id, memberId]
       );
     }
@@ -91,8 +91,8 @@ const createProject = async (req, res) => {
       `
         SELECT u.id, u.name, u.email, u.role, COALESCE(u.job_role, 'Team Member') AS job_role
         FROM users u
-        JOIN project_members pm ON pm.user_id = u.id
-        WHERE pm.project_id = $1 AND u.role = 'member'
+        JOIN project_members pm ON pm.user_id::text = u.id::text
+        WHERE pm.project_id = $1::uuid AND u.role = 'member'
         ORDER BY u.name
       `,
       [project.id]
@@ -122,8 +122,8 @@ const getProjectMembers = async (req, res) => {
     const query = `
       SELECT u.id, u.name, u.email, u.role, COALESCE(u.job_role, 'Team Member') AS job_role
       FROM users u
-      JOIN project_members pm ON u.id = pm.user_id
-      WHERE pm.project_id = $1 AND u.role = 'member'
+      JOIN project_members pm ON u.id::text = pm.user_id::text
+      WHERE pm.project_id = $1::uuid AND u.role = 'member'
       ORDER BY u.name
     `;
     const result = await db.query(query, [id]);
@@ -147,7 +147,7 @@ const addMemberToProject = async (req, res) => {
       `
         SELECT id, name, email, COALESCE(job_role, 'Team Member') AS job_role
         FROM users
-        WHERE id = $1 AND role = $2
+        WHERE id = $1::uuid AND role = $2
       `,
       [user_id, 'member']
     );
@@ -158,7 +158,7 @@ const addMemberToProject = async (req, res) => {
 
     // Check if user already in project
     const checkUser = await db.query(
-      'SELECT * FROM project_members WHERE project_id = $1 AND user_id = $2',
+      'SELECT * FROM project_members WHERE project_id = $1::uuid AND user_id = $2::uuid',
       [id, user_id]
     );
 
@@ -167,7 +167,7 @@ const addMemberToProject = async (req, res) => {
     }
 
     await db.query(
-      'INSERT INTO project_members (project_id, user_id) VALUES ($1, $2)',
+      'INSERT INTO project_members (project_id, user_id) VALUES ($1::uuid, $2::uuid)',
       [id, user_id]
     );
 
@@ -189,7 +189,7 @@ const deleteProject = async (req, res) => {
       `
         SELECT id, name
         FROM projects
-        WHERE id = $1
+        WHERE id = $1::uuid
       `,
       [id]
     );
@@ -198,7 +198,7 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found.' });
     }
 
-    await db.query('DELETE FROM projects WHERE id = $1', [id]);
+    await db.query('DELETE FROM projects WHERE id = $1::uuid', [id]);
 
     res.json({
       message: 'Project deleted successfully.',

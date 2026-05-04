@@ -2,8 +2,10 @@ const db = require('../config/db');
 
 const getDashboardStats = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = String(req.user.id);
     const userRole = req.user.role;
+
+    console.log("User ID:", userId, typeof userId);
 
     if (userRole === 'admin') {
       // Admin sees global stats
@@ -20,7 +22,7 @@ const getDashboardStats = async (req, res) => {
       const memberStatsQuery = `
         SELECT u.name as member_name, COUNT(t.id) as total
         FROM tasks t
-        JOIN users u ON t.assigned_to = u.id
+        JOIN users u ON t.assigned_to::text = u.id::text
         GROUP BY u.name
       `;
       const membersResult = await db.query(memberStatsQuery);
@@ -38,7 +40,7 @@ const getDashboardStats = async (req, res) => {
           COUNT(t.id) FILTER (WHERE t.status = 'in_progress')::int as in_progress_tasks,
           COUNT(t.id) FILTER (WHERE t.status != 'completed' AND t.due_date IS NOT NULL AND t.due_date < CURRENT_TIMESTAMP)::int as overdue_tasks
         FROM tasks t
-        WHERE t.assigned_to = $1
+        WHERE t.assigned_to = $1::uuid
       `;
       const result = await db.query(query, [userId]);
       res.json(result.rows[0]);

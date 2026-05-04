@@ -82,6 +82,9 @@ const getUsers = async (req, res) => {
 
 const getAdminOverview = async (req, res) => {
   try {
+    const userId = String(req.user.id);
+    console.log("User ID:", userId, typeof userId);
+
     const [statsResult, membersResult, projectsResult, tasksResult] = await Promise.all([
       db.query(`
         SELECT
@@ -102,8 +105,8 @@ const getAdminOverview = async (req, res) => {
           COUNT(t.id)::int AS assigned_task_count,
           COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_task_count
         FROM users u
-        LEFT JOIN project_members pm ON pm.user_id = u.id
-        LEFT JOIN tasks t ON t.assigned_to = u.id
+        LEFT JOIN project_members pm ON pm.user_id::text = u.id::text
+        LEFT JOIN tasks t ON t.assigned_to::text = u.id::text
         WHERE u.role = 'member'
         GROUP BY u.id
         ORDER BY u.created_at DESC
@@ -128,8 +131,8 @@ const getAdminOverview = async (req, res) => {
             '[]'::json
           ) AS members
         FROM projects p
-        LEFT JOIN project_members pm ON pm.project_id = p.id
-        LEFT JOIN users u ON u.id = pm.user_id
+        LEFT JOIN project_members pm ON pm.project_id::text = p.id::text
+        LEFT JOIN users u ON u.id::text = pm.user_id::text
         GROUP BY p.id
         ORDER BY p.created_at DESC
       `),
@@ -147,8 +150,8 @@ const getAdminOverview = async (req, res) => {
           u.name AS assignee_name,
           COALESCE(u.job_role, 'Team Member') AS assignee_job_role
         FROM tasks t
-        JOIN projects p ON p.id = t.project_id
-        LEFT JOIN users u ON u.id = t.assigned_to
+        JOIN projects p ON p.id::text = t.project_id::text
+        LEFT JOIN users u ON u.id::text = t.assigned_to::text
         ORDER BY t.created_at DESC
       `),
     ]);
@@ -175,7 +178,7 @@ const deleteUser = async (req, res) => {
       `
         SELECT id, name, email, role
         FROM users
-        WHERE id = $1
+        WHERE id = $1::uuid
       `,
       [id]
     );
@@ -189,9 +192,9 @@ const deleteUser = async (req, res) => {
     }
 
     await client.query('BEGIN');
-    await client.query('DELETE FROM tasks WHERE assigned_to = $1', [id]);
-    await client.query('DELETE FROM project_members WHERE user_id = $1', [id]);
-    await client.query('DELETE FROM users WHERE id = $1', [id]);
+    await client.query('DELETE FROM tasks WHERE assigned_to = $1::uuid', [id]);
+    await client.query('DELETE FROM project_members WHERE user_id = $1::uuid', [id]);
+    await client.query('DELETE FROM users WHERE id = $1::uuid', [id]);
     await client.query('COMMIT');
 
     res.json({

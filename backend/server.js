@@ -34,17 +34,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+console.log('🔄 Starting server — initializing database schema...');
+
 ensureSchema()
   .then(() => {
-    try {
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-      });
-    } catch (err) {
-      console.error("Startup error:", err);
-    }
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
   })
   .catch((error) => {
-    console.error('Failed to prepare database schema:', error);
+    console.error('❌ Failed to prepare database schema:', error.message);
     process.exit(1);
   });

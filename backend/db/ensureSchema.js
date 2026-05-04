@@ -22,7 +22,7 @@ async function createDefaultAdmin() {
       console.log("✅ Admin already exists");
     }
   } catch (err) {
-    console.error("❌ Admin creation error:", err.message);
+    console.error("❌ Admin error:", err.message);
   }
 }
 
@@ -30,14 +30,14 @@ async function ensureSchema() {
   console.log("🚀 ensureSchema started...");
 
   try {
-    // ✅ Safe extension
+    // Try pgcrypto (safe)
     try {
-      await db.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+      await db.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
     } catch (err) {
       console.log("⚠️ pgcrypto not allowed, skipping...");
     }
 
-    // ✅ DB check
+    // Test DB
     await db.query("SELECT 1");
     console.log("✅ DB connected");
 
@@ -45,11 +45,11 @@ async function ensureSchema() {
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'member',
-        job_role VARCHAR(100),
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'member',
+        job_role TEXT,
         is_first_login BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -59,7 +59,7 @@ async function ensureSchema() {
     await db.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
+        name TEXT NOT NULL,
         description TEXT,
         created_by UUID REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -80,9 +80,9 @@ async function ensureSchema() {
       CREATE TABLE IF NOT EXISTS tasks (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-        title VARCHAR(255),
+        title TEXT,
         description TEXT,
-        status VARCHAR(50) DEFAULT 'todo',
+        status TEXT DEFAULT 'todo',
         assigned_to UUID REFERENCES users(id),
         due_date TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -95,7 +95,6 @@ async function ensureSchema() {
 
   } catch (err) {
     console.error("❌ Schema error:", err.message);
-    // ❌ DO NOT throw
   }
 }
 

@@ -30,18 +30,18 @@ async function ensureSchema() {
   console.log("🚀 ensureSchema started...");
 
   try {
-    // Try pgcrypto (safe)
+    // ✅ Safe extension (ignore if not allowed)
     try {
       await db.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
     } catch (err) {
       console.log("⚠️ pgcrypto not allowed, skipping...");
     }
 
-    // Test DB
+    // ✅ DB connection test
     await db.query("SELECT 1");
     console.log("✅ DB connected");
 
-    // USERS
+    // 🔥 USERS TABLE (always first)
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,18 +55,18 @@ async function ensureSchema() {
       );
     `);
 
-    // PROJECTS
+    // 🔥 PROJECTS (NO FK — avoid crash)
     await db.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
         description TEXT,
-        created_by UUID REFERENCES users(id),
+        created_by UUID, -- ⚠️ FK removed to avoid mismatch error
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // PROJECT MEMBERS
+    // 🔥 PROJECT MEMBERS (safe FK)
     await db.query(`
       CREATE TABLE IF NOT EXISTS project_members (
         project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -75,7 +75,7 @@ async function ensureSchema() {
       );
     `);
 
-    // TASKS
+    // 🔥 TASKS (safe FK)
     await db.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,7 +83,7 @@ async function ensureSchema() {
         title TEXT,
         description TEXT,
         status TEXT DEFAULT 'todo',
-        assigned_to UUID REFERENCES users(id),
+        assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
         due_date TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

@@ -30,71 +30,91 @@ async function ensureSchema() {
   console.log("🚀 ensureSchema started...");
 
   try {
-    // ✅ Safe extension (ignore if not allowed)
+    // Extension
     try {
       await db.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
-    } catch (err) {
-      console.log("⚠️ pgcrypto not allowed, skipping...");
+    } catch {
+      console.log("⚠️ pgcrypto not allowed");
     }
 
-    // ✅ DB connection test
+    // DB test
     await db.query("SELECT 1");
     console.log("✅ DB connected");
 
-    // 🔥 USERS TABLE (always first)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        role TEXT DEFAULT 'member',
-        job_role TEXT,
-        is_first_login BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    // USERS
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          role TEXT DEFAULT 'member',
+          job_role TEXT,
+          is_first_login BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log("✅ users ready");
+    } catch (err) {
+      console.log("❌ users error:", err.message);
+    }
 
-    // 🔥 PROJECTS (NO FK — avoid crash)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL,
-        description TEXT,
-        created_by UUID, -- ⚠️ FK removed to avoid mismatch error
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    // PROJECTS
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name TEXT NOT NULL,
+          description TEXT,
+          created_by UUID,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log("✅ projects ready");
+    } catch (err) {
+      console.log("❌ projects error:", err.message);
+    }
 
-    // 🔥 PROJECT MEMBERS (safe FK)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS project_members (
-        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        PRIMARY KEY (project_id, user_id)
-      );
-    `);
+    // PROJECT MEMBERS
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS project_members (
+          project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          PRIMARY KEY (project_id, user_id)
+        );
+      `);
+      console.log("✅ project_members ready");
+    } catch (err) {
+      console.log("❌ project_members error:", err.message);
+    }
 
-    // 🔥 TASKS (safe FK)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-        title TEXT,
-        description TEXT,
-        status TEXT DEFAULT 'todo',
-        assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
-        due_date TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    // TASKS
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+          title TEXT,
+          description TEXT,
+          status TEXT DEFAULT 'todo',
+          assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+          due_date TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log("✅ tasks ready");
+    } catch (err) {
+      console.log("❌ tasks error:", err.message);
+    }
 
-    console.log("✅ Schema ready");
+    console.log("🎉 All schema attempts done");
 
     await createDefaultAdmin();
 
   } catch (err) {
-    console.error("❌ Schema error:", err.message);
+    console.error("❌ Fatal schema error:", err.message);
   }
 }
 
